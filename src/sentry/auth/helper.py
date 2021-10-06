@@ -509,8 +509,11 @@ class AuthIdentityHandler:
 
     @property
     def provider_name(self):
-        # A blank character is needed to prevent an HTML span from collapsing
-        return self.auth_provider.get_provider().name if self.auth_provider else " "
+        if self.auth_provider:
+            return self.auth_provider.provider_name
+        else:
+            # A blank character is needed to prevent an HTML span from collapsing
+            return " "
 
     def _dispatch_to_confirmation(self, identity: Identity) -> Tuple[Optional[User], str]:
         if self.user.is_authenticated:
@@ -522,7 +525,7 @@ class AuthIdentityHandler:
                 send_one_time_account_confirm_link(
                     existing_user,
                     self.organization,
-                    self.provider_name,
+                    self.auth_provider,
                     identity["email"],
                     identity["id"],
                 )

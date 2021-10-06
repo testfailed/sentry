@@ -1,12 +1,13 @@
 import string
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any, Dict
 
 from django.urls import reverse
 from django.utils.crypto import get_random_string
 
 from sentry import options
-from sentry.models import Organization, OrganizationMember, User
+from sentry.models import AuthProvider, Organization, OrganizationMember, User
 from sentry.utils import json, metrics, redis
 from sentry.utils.email import MessageBuilder
 from sentry.utils.http import absolute_uri
@@ -18,7 +19,7 @@ _TTL = timedelta(minutes=10)
 def send_one_time_account_confirm_link(
     user: User,
     org: Organization,
-    provider_name: str,
+    provider: AuthProvider,
     email: str,
     identity_id: str,
 ) -> "AccountConfirmLink":
@@ -31,11 +32,11 @@ def send_one_time_account_confirm_link(
 
     :param user: the user profile to link
     :param organization: the organization whose SSO provider is being used
-    :param provider_name: a display name for the SSO provider
+    :param provider: the SSO provider
     :param email: the email address associated with the SSO identity
     :param identity_id: the SSO identity id
     """
-    link = AccountConfirmLink(user, org, provider_name, email, identity_id)
+    link = AccountConfirmLink(user, org, provider, email, identity_id)
     link.store_in_redis()
     link.send_confirm_email()
     return link
@@ -49,7 +50,7 @@ def get_redis_cluster():
 class AccountConfirmLink:
     user: User
     organization: Organization
-    provider_name: str
+    provider: AuthProvider
     email: str
     identity_id: str
 
@@ -61,7 +62,7 @@ class AccountConfirmLink:
         context = {
             "user": self.user,
             "organization": self.organization.name,
-            "provider": self.provider_name,
+            "provider": self.provider.provider_name,
             "url": absolute_uri(
                 reverse(
                     "sentry-idp-email-verification",
@@ -92,6 +93,7 @@ class AccountConfirmLink:
             "email": self.email,
             "member_id": member_id,
             "identity_id": self.identity_id,
+            "provider": self.provider.provider,
         }
         cluster.setex(
             self.verification_key, int(_TTL.total_seconds()), json.dumps(verification_value)
@@ -119,6 +121,8 @@ def verify_account(key: str) -> bool:
     verification_key = get_redis_key(key)
     verification_value = get_verification_value_from_key(verification_key)
     if verification_value:
+        if verification_value.get("provider") == "okta":
+            metrics.incr("idpmigration.migraton_to_okta")
         metrics.incr("idpmigration.confirmation_success")
         return True
     else:
