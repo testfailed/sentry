@@ -7,7 +7,7 @@ from django.utils.crypto import get_random_string
 
 from sentry import options
 from sentry.models import Organization, OrganizationMember, User
-from sentry.utils import json, redis
+from sentry.utils import json, metrics, redis
 from sentry.utils.email import MessageBuilder
 from sentry.utils.http import absolute_uri
 
@@ -79,6 +79,7 @@ class AccountConfirmLink:
             context=context,
         )
         msg.send_async([self.email])
+        metrics.incr("idpmigration.confirm_link_sent")
 
     def store_in_redis(self) -> None:
         cluster = get_redis_cluster()
@@ -112,17 +113,14 @@ def get_verification_value_from_key(verification_key):
 def verify_account(key: str) -> bool:
     """Verify a key to migrate a user to a new IdP.
 
-    If the provided one-time key is valid, create a new auth identity
-    linking the user to the organization's SSO provider.
-
-    :param user: the user profile to link
-    :param org: the organization whose SSO provider is being used
     :param key: the one-time verification key
     :return: whether the key is valid
     """
     verification_key = get_redis_key(key)
     verification_value = get_verification_value_from_key(verification_key)
-    if not verification_value:
+    if verification_value:
+        metrics.incr("idpmigration.confirmation_success")
+        return True
+    else:
+        metrics.incr("idpmigration.confirmation_failure")
         return False
-
-    return True
