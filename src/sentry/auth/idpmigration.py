@@ -91,6 +91,7 @@ class AccountConfirmLink:
             "user_id": self.user.id,
             "email": self.email,
             "member_id": member_id,
+            "organization_id": self.organization.id,
             "identity_id": self.identity_id,
             "provider": self.provider.provider,
         }
@@ -120,9 +121,10 @@ def verify_account(key: str) -> bool:
     verification_key = get_redis_key(key)
     verification_value = get_verification_value_from_key(verification_key)
     if verification_value:
-        if verification_value.get("provider") == "okta":
-            metrics.incr("idpmigration.migraton_to_okta")
-        metrics.incr("idpmigration.confirmation_success")
+        metrics.incr(
+            "idpmigration.confirmation_success",
+            tags={key: verification_value.get(key) for key in ("provider", "organization_id")},
+        )
         return True
     else:
         metrics.incr("idpmigration.confirmation_failure")
