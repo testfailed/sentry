@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from sentry import analytics, eventstream, features
 from sentry.api.serializers import serialize
 from sentry.api.serializers.models.actor import ActorSerializer
+from sentry.auth.access import BaseAccess
 from sentry.db.models.query import create_or_update
 from sentry.models import (
     TOMBSTONE_FIELDS_FROM_GROUP,
@@ -53,11 +54,14 @@ from sentry.tasks.merge import merge_groups
 from sentry.utils import metrics
 from sentry.utils.functional import extract_lazy_object
 
-from ..group_index import delete_group_list
+from . import delete_group_list
 from .validators import GroupValidator, ValidationError
 
 
-def self_subscribe_and_assign_issue(acting_user, group):
+def self_subscribe_and_assign_issue(
+    acting_user: Optional[User],
+    group: Group,
+) -> Optional[ActorTuple]:
     # Used during issue resolution to assign to acting user
     # returns None if the user didn't elect to self assign on resolution
     # or the group is assigned already, otherwise returns Actor
@@ -72,8 +76,12 @@ def self_subscribe_and_assign_issue(acting_user, group):
         if self_assign_issue == "1" and not group.assignee_set.exists():
             return ActorTuple(type=User, id=acting_user.id)
 
+    return None
 
-def get_current_release_version_of_group(group, follows_semver=False):
+
+def get_current_release_version_of_group(
+    group: Group, follows_semver: bool = False
+) -> Optional[str]:
     """
     Function that returns the latest release version associated with a Group, and by latest we
     mean either most recent (date) or latest in semver versioning scheme
@@ -113,7 +121,12 @@ def get_current_release_version_of_group(group, follows_semver=False):
     return current_release_version
 
 
-def handle_discard(request, group_list, projects, user):
+def handle_discard(
+    group_list: Sequence[Group],
+    projects: Sequence[Project],
+    user: User,
+    request: Request,
+) -> None:
     for project in projects:
         if not features.has("projects:discard-groups", project, actor=user):
             return Response({"detail": ["You do not have that feature enabled"]}, status=400)
@@ -141,27 +154,44 @@ def handle_discard(request, group_list, projects, user):
                 )
 
     for project in projects:
-        delete_group_list(request, project, groups_to_delete.get(project.id), delete_type="discard")
-
-    return Response(status=204)
+        delete_group_list(
+            user, project, groups_to_delete.get(project.id), delete_type="discard", request=request
+        )
 
 
 def update_groups(
-    request: Optional[Request],
+    request: Request,
     group_ids: Sequence[int],
     projects: Sequence[Project],
     organization_id: int,
+    search_fn: Callable[[Optional[Mapping[str, Any]]], Tuple[Any, Mapping[str, Any]]],
+) -> Response:
+    return update_groups_no_request(
+        user=request.user,
+        data=request.data,
+        group_ids=group_ids,
+        projects=projects,
+        organization_id=organization_id,
+        search_fn=search_fn,
+        access=getattr(request, "access", None),
+        referrer=request.META.get("HTTP_REFERER"),
+        request=request,
+    )
+
+
+def update_groups_no_request(
+    user: User,
+    data: Mapping[str, Any],
+    group_ids: Sequence[int],
+    projects: Sequence[Project],
+    organization_id: int,
+    request: Request,
     search_fn: Optional[
         Callable[[Optional[Mapping[str, Any]]], Tuple[Any, Mapping[str, Any]]]
     ] = None,
-    user: Optional[User] = None,
-    data: Optional[Mapping[str, Any]] = None,
+    access: Optional[BaseAccess] = None,
+    referrer: Optional[str] = None,
 ) -> Response:
-    """TODO(mgaeta): De-couple this function from Request/Response."""
-    if request:
-        user = request.user
-        data = request.data
-
     if group_ids:
         group_list = Group.objects.filter(
             project__organization_id=organization_id, project__in=projects, id__in=group_ids
@@ -179,7 +209,7 @@ def update_groups(
         serializer = GroupValidator(
             data=data,
             partial=True,
-            context={"project": project, "access": getattr(request, "access", None)},
+            context={"project": project, "access": access},
         )
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -213,7 +243,8 @@ def update_groups(
 
     discard = result.get("discard")
     if discard:
-        return handle_discard(request, list(queryset), projects, acting_user)
+        handle_discard(list(queryset), projects, acting_user, request)
+        return Response(status=204)
 
     statusDetails = result.pop("statusDetails", result)
     status = result.get("status")
@@ -794,7 +825,7 @@ def update_groups(
                     group,
                     action=GroupInboxRemoveAction.MARK_REVIEWED,
                     user=acting_user,
-                    referrer=request.META.get("HTTP_REFERER") if request else None,
+                    referrer=referrer,
                 )
                 issue_mark_reviewed.send_robust(
                     project=project,
