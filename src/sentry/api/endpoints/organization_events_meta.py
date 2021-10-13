@@ -8,7 +8,7 @@ from sentry import features, search
 from sentry.api.base import EnvironmentMixin
 from sentry.api.bases import NoProjects, OrganizationEventsEndpointBase
 from sentry.api.event_search import parse_search_query
-from sentry.api.helpers.group_index import build_query_params_from_request
+from sentry.api.helpers.group import build_query_params_from_request
 from sentry.api.serializers import serialize
 from sentry.api.serializers.models.group import GroupSerializer
 from sentry.search.events.fields import get_function_alias

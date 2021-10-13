@@ -7,7 +7,7 @@ from sentry import tsdb
 from sentry.api.base import StatsMixin
 from sentry.api.bases.project import ProjectEndpoint
 from sentry.api.exceptions import ResourceDoesNotExist
-from sentry.api.helpers.group_index import rate_limit_endpoint
+from sentry.api.helpers.group import rate_limit_endpoint
 from sentry.models import ProjectKey
 
 

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from sentry.api.base import EnvironmentMixin, StatsMixin
 from sentry.api.bases.project import ProjectEndpoint
 from sentry.api.exceptions import ResourceDoesNotExist
-from sentry.api.helpers.group_index import rate_limit_endpoint
+from sentry.api.helpers.group import rate_limit_endpoint
 from sentry.app import tsdb
 from sentry.models import Environment, Group
 

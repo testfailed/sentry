@@ -1,6 +1,6 @@
 from django.http import QueryDict
 
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     ValidationError,
     build_rate_limit_key,
     update_groups,

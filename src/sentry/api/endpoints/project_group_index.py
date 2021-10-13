@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from sentry import analytics, eventstore
 from sentry.api.base import EnvironmentMixin
 from sentry.api.bases.project import ProjectEndpoint, ProjectEventPermission
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     ValidationError,
     delete_groups,
     get_by_short_id,

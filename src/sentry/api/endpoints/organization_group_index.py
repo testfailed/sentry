@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from sentry import features, search
 from sentry.api.bases import OrganizationEventPermission, OrganizationEventsEndpointBase
 from sentry.api.event_search import SearchFilter
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     ValidationError,
     build_query_params_from_request,
     calculate_stats_period,

@@ -10,7 +10,7 @@ from sentry.api import client
 from sentry.api.base import EnvironmentMixin
 from sentry.api.bases import GroupEndpoint
 from sentry.api.helpers.environments import get_environments
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     delete_group_list,
     get_first_last_release,
     prep_search,

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 
 from sentry import features, search
 from sentry.api.bases import OrganizationEventsEndpointBase
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     ValidationError,
     rate_limit_endpoint,
     validate_search_filter_permissions,

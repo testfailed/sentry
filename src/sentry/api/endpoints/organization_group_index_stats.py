@@ -3,7 +3,7 @@ from rest_framework.response import Response
 
 from sentry.api.bases import OrganizationEventPermission, OrganizationEventsEndpointBase
 from sentry.api.endpoints.organization_group_index import ERR_INVALID_STATS_PERIOD
-from sentry.api.helpers.group_index import (
+from sentry.api.helpers.group import (
     build_query_params_from_request,
     calculate_stats_period,
     rate_limit_endpoint,
