@@ -252,4 +252,12 @@ class ProjectGroupIndexEndpoint(ProjectEndpoint, EnvironmentMixin):
         :auth: required
         """
         search_fn = functools.partial(prep_search, self, request, project)
-        return delete_groups(request, [project], project.organization_id, search_fn)
+        group_ids = request.GET.getlist("id")
+        return delete_groups(
+            request.user,
+            group_ids,
+            [project],
+            project.organization_id,
+            search_fn,
+            request=request,
+        )

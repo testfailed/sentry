@@ -448,4 +448,12 @@ class OrganizationGroupIndexEndpoint(OrganizationEventsEndpointBase):
             self.get_environments(request, organization),
         )
 
-        return delete_groups(request, projects, organization.id, search_fn)
+        group_ids = request.GET.getlist("id")
+        return delete_groups(
+            request.user,
+            group_ids,
+            projects,
+            organization.id,
+            search_fn,
+            request=request,
+        )
