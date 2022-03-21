@@ -68,13 +68,13 @@ repos:
 #      additional_dependencies: [ "pyright@1.1.178" ]
 
 -   repo: https://github.com/sirosen/check-jsonschema
-    rev: 0.3.0
+    rev: 0.14.0
     hooks:
     - id: check-github-actions
     - id: check-github-workflows
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.1.0
     hooks:
     - id: check-case-conflict
     - id: check-executables-have-shebangs
